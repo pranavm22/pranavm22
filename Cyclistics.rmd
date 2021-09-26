@@ -1,0 +1,166 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r Importing libraries}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+```
+
+
+```{r Importing datasets}
+Q1 = read.csv("C:/Users/JERRY/Desktop/Cyclistic/Csv/Q1.csv")
+
+Q2 = read.csv("C:/Users/JERRY/Desktop/Cyclistic/Csv/Q2.csv")
+
+Q3 = read.csv("C:/Users/JERRY/Desktop/Cyclistic/Csv/Q3.csv")
+
+Q4 = read.csv("C:/Users/JERRY/Desktop/Cyclistic/Csv/Q4.csv")
+```
+
+```{r Checking for Null Values}
+q1NA = is.na(Q1)
+sprintf("NA values in Q1 Dataset %d",sum(q1NA))
+q2NA = is.na(Q2)
+sprintf("NA values in Q2 Dataset %d",sum(q2NA))
+q3NA = is.na(Q3)
+sprintf("NA values in Q3 Dataset %d",sum(q3NA))
+q4NA = is.na(Q4)
+sprintf("NA values in Q4 Dataset %d",sum(q4NA))
+```
+
+```{r Inspecting Datasets}
+str(Q1)
+str(Q2)
+str(Q3)
+str(Q4)
+```
+
+
+
+
+```{r Checking the column names}
+colnames(Q1)
+colnames(Q2)
+colnames(Q3)
+colnames(Q4)
+```
+
+```{r Making the datatype consistent}
+Q4 <- mutate(Q4, trip_id = as.character(trip_id),bikeid = as.character(bikeid))
+
+Q3 <- mutate(Q3, trip_id = as.character(trip_id),bikeid = as.character(bikeid))
+
+Q2 <- mutate(Q2, trip_id = as.character(trip_id),bikeid = as.character(bikeid))
+
+Q1 <- mutate(Q1, trip_id = as.character(trip_id),bikeid = as.character(bikeid))
+```
+
+
+```{r Forming the complete dataset}
+CyclisticData <- bind_rows(Q2,Q3,Q4,Q1)
+```
+
+
+```{r}
+CyclisticData <- CyclisticData %>%
+select(-c(birthyear, gender))
+```
+
+```{r Information about new DataSet}
+colnames(CyclisticData)
+nrow(CyclisticData)
+dim(CyclisticData)
+head(CyclisticData)
+str(CyclisticData)
+summary(CyclisticData)
+```
+
+
+```{r making the dataset more easily accesible by making it less granular}
+
+table(CyclisticData$usertype)
+CyclisticData$date <- as.Date(CyclisticData$start_time,"%d/%m/%Y") #The default format is yyyy-mm-dd
+CyclisticData$month <- format(as.Date(CyclisticData$date), "%m")
+CyclisticData$day <- format(as.Date(CyclisticData$date), "%d")
+CyclisticData$year <- format(as.Date(CyclisticData$date), "%Y")
+CyclisticData$day_of_week <- format(as.Date(CyclisticData$date), "%A")
+
+```
+
+```{r ride_length}
+CyclisticData <- rename(CyclisticData,ride_length=tripduration)
+```
+
+```{r making the data cleaner}
+str(CyclisticData)
+is.factor(CyclisticData$ride_length)
+CyclisticData$ride_length <- as.numeric(as.character(CyclisticData$ride_length))
+is.numeric(CyclisticData$ride_length)
+sum(is.na(CyclisticData))
+CyclisticData
+```
+
+
+```{r}
+CyclisticDataFinal <- CyclisticData[!(CyclisticData$from_station_name == "HQ QR" | CyclisticData$ride_length<0),]
+CyclisticDataFinal <- na.omit(CyclisticDataFinal)
+```
+
+
+```{r Performing analysis on ride_length using statistics}
+mean(CyclisticDataFinal$ride_length)
+median(CyclisticDataFinal$ride_length)
+max(CyclisticDataFinal$ride_length)
+min(CyclisticDataFinal$ride_length)
+```
+
+```{r Summary of Final Dataset}
+summary(CyclisticDataFinal)
+```
+
+
+```{r Condensing the user type}
+aggregate(CyclisticDataFinal$ride_length ~ CyclisticDataFinal$usertype, FUN = mean)
+aggregate(CyclisticDataFinal$ride_length ~ CyclisticDataFinal$usertype, FUN = median)
+aggregate(CyclisticDataFinal$ride_length ~ CyclisticDataFinal$usertype, FUN = max)
+aggregate(CyclisticDataFinal$ride_length ~ CyclisticDataFinal$usertype, FUN = min)
+
+aggregate(CyclisticDataFinal$ride_length ~ CyclisticDataFinal$usertype + CyclisticDataFinal$day_of_week, FUN = mean)
+CyclisticDataFinal$day_of_week <- ordered(CyclisticDataFinal$day_of_week, levels=c("Sunday", "Monday","Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+aggregate(CyclisticDataFinal$ride_length ~ CyclisticDataFinal$usertype + CyclisticDataFinal$day_of_week, FUN = mean)
+```
+
+```{r Data Viz}
+CyclisticDataFinal
+CyclisticDataFinal %>%
+mutate(weekday = wday(start_time, label = TRUE)) %>% 
+group_by(usertype, weekday) %>% 
+summarise(number_of_rides = n() ,average_duration = mean(ride_length)) %>% 
+arrange(usertype, weekday) 
+
+CyclisticDataFinal %>%
+mutate(weekday = wday(start_time, label = TRUE)) %>%
+group_by(usertype, weekday) %>%
+summarise(number_of_rides = n()
+,average_duration = mean(ride_length)) %>%
+arrange(usertype, weekday) %>%
+ggplot(aes(x = weekday, y = number_of_rides, fill = usertype)) +
+geom_col(position = "dodge")
+
+CyclisticDataFinal %>%
+mutate(weekday = wday(start_time, label = TRUE)) %>%
+group_by(usertype, weekday) %>%
+summarise(number_of_rides = n()
+,average_duration = mean(ride_length)) %>%
+arrange(usertype, weekday) %>%
+ggplot(aes(x = weekday, y = average_duration, fill = usertype)) +
+geom_col(position = "dodge")
+```
+
+
